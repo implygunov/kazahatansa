@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 
 const { init } = require('./database');
+const db = require('./database');
 const config = require('./config');
 
 const app = express();
@@ -11,6 +12,18 @@ const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
+
+// Перед каждым запросом к API перечитываем данные из MySQL,
+// чтобы правки из phpMyAdmin сразу отражались на сайте, а память была свежей.
+app.use('/api', async (req, res, next) => {
+  try {
+    await db.reload();
+    next();
+  } catch (e) {
+    console.error('[db] reload error:', e.message);
+    res.status(503).json({ error: 'db_unavailable' });
+  }
+});
 
 app.use('/api', require('./routes/auth'));
 app.use('/api', require('./routes/profile'));

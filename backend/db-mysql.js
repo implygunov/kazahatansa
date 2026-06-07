@@ -68,6 +68,16 @@ async function loadAll() {
   }
 }
 
+// Перечитать всё из MySQL в память (источник правды — БД).
+// Вызывается перед каждым запросом, чтобы правки из phpMyAdmin сразу были видны
+// и чтобы save() не затирал базу устаревшей памятью.
+async function reload() {
+  if (!pool) return;
+  await loadAll();
+  recomputeSequences();
+  data.stats.users = data.users.length;
+}
+
 // mysql2 уже парсит JSON-колонки; приводим типы к тем, что ждут роуты.
 function normalizeRow(row) {
   const out = { ...row };
@@ -149,4 +159,4 @@ async function syncToDb() {
   }
 }
 
-module.exports = { init, data, save, nextId, _pool: () => pool };
+module.exports = { init, reload, data, save, nextId, _pool: () => pool };

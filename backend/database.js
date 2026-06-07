@@ -9,4 +9,5 @@ module.exports = {
   save: backend.save,
   nextId: backend.nextId,
   init: backend.init,
+  reload: backend.reload,
 };
