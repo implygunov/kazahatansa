@@ -88,4 +88,44 @@ router.get('/profile/:id', authMiddleware, (req, res) => {
   });
 });
 
+// ── Логин для лаунчера (KazahstanLoader, C#) ──
+// Лаунчер шлёт { login, password, hwid } и ждёт ответ в своём формате:
+//   успех:  { allowed: true, username, role, ram, subTime, uid }
+//   отказ:  { allowed: false, error: "<сообщение>" }
+// Капча тут не нужна — десктоп-клиент не проходит Turnstile.
+const PRIVILEGED = ['ADMIN', 'DEVELOPER', 'MODERATOR'];
+
+router.post('/launcher/login', (req, res) => {
+  const { login, password, hwid } = req.body || {};
+  if (!login || !password) return res.json({ allowed: false, error: 'User not found' });
+
+  const user = data.users.find(u => u.username === login || u.email === login);
+  if (!user) return res.json({ allowed: false, error: 'User not found' });
+  if (!bcrypt.compareSync(password, user.password)) return res.json({ allowed: false, error: 'Wrong password' });
+  if (user.role === 'BANNED') return res.json({ allowed: false, error: 'User is banned' });
+
+  // Привязка HWID: при первом входе запоминаем, дальше сверяем.
+  // Чтобы сбросить — очисти поле hwid у юзера в phpMyAdmin.
+  if (hwid) {
+    if (!user.hwid) { user.hwid = hwid; save(); }
+    else if (user.hwid !== hwid) return res.json({ allowed: false, error: 'HWID mismatch' });
+  }
+
+  // Подписка: привилегированные роли — без ограничения по времени.
+  const now = new Date();
+  const subActive = user.subscription_until ? new Date(user.subscription_until) > now : false;
+  if (!PRIVILEGED.includes(user.role) && !subActive) {
+    return res.json({ allowed: false, error: 'Subscription expired' });
+  }
+
+  res.json({
+    allowed: true,
+    username: user.username,
+    role: user.role,
+    ram: String(user.ram || 2048),
+    subTime: user.subscription_until || '',
+    uid: String(user.id),
+  });
+});
+
 module.exports = router;
