@@ -1,8 +1,10 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 
 const { init } = require('./database');
+const config = require('./config');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -21,6 +23,7 @@ app.use('/api', require('./routes/payments'));
 app.use('/api', require('./routes/download'));
 
 app.use(express.static(path.join(__dirname, '..'), {
+  index: false,
   setHeaders: (res, filePath) => {
     const ext = path.extname(filePath).toLowerCase();
     if (ext === '.html') res.set('Content-Type', 'text/html; charset=utf-8');
@@ -30,10 +33,21 @@ app.use(express.static(path.join(__dirname, '..'), {
   }
 }));
 
+// Отдаём index.html, подставляя публичный Site Key Turnstile из .env (TURNSTILE_SITEKEY).
+// Фронт читает его из window.__TS_SITEKEY__; если ключ не задан — используется встроенный по умолчанию.
+function sendIndex(res) {
+  let html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  if (config.TURNSTILE_SITEKEY) {
+    const inject = `<script>window.__TS_SITEKEY__=${JSON.stringify(config.TURNSTILE_SITEKEY)};</script>\n    `;
+    html = html.replace('<script type="module"', inject + '<script type="module"');
+  }
+  res.set('Content-Type', 'text/html; charset=utf-8');
+  res.send(html);
+}
+
 app.get('*', (req, res) => {
   if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Not found' });
-  res.set('Content-Type', 'text/html; charset=utf-8');
-  res.sendFile(path.join(__dirname, '..', 'index.html'));
+  sendIndex(res);
 });
 
 init()
