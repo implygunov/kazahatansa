@@ -93,7 +93,7 @@ router.get('/profile/:id', authMiddleware, (req, res) => {
 //   успех:  { allowed: true, username, role, ram, subTime, uid }
 //   отказ:  { allowed: false, error: "<сообщение>" }
 // Капча тут не нужна — десктоп-клиент не проходит Turnstile.
-const PRIVILEGED = ['ADMIN', 'DEVELOPER', 'MODERATOR'];
+const PRIVILEGED = ['ADMIN', 'DEVELOPER', "YOUTUBE", "MODERATOR", "USER", "BETA", "PREMIUM", 'MODERATOR'];
 
 router.post('/launcher/login', (req, res) => {
   const { login, password, hwid } = req.body || {};
