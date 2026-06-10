@@ -66,4 +66,18 @@ module.exports = {
   JAR_ENC_KEY: process.env.JAR_ENC_KEY || '0000000000000000000000000000000000000000000000000000000000000000',
   // Путь к исходному (незашифрованному) jar лаунчера.
   JAR_SOURCE_PATH: process.env.JAR_SOURCE_PATH || require('path').join(__dirname, 'files', 'client.jar'),
+  // URL защищённого jar (напр. GitHub Releases). На Render используем ЕГО, т.к.
+  // 136 МБ файл в git/Render не положить. Если задан — приоритетнее, чем PATH.
+  JAR_SOURCE_URL: process.env.JAR_SOURCE_URL || '',
+
+  // --- Ключ расшифровки классов клиента (Pillar B) ---
+  // 32-байтный ключ (hex, 64 символа), которым build-задача encryptClasses
+  // зашифровала .class секретных пакетов. Выдаётся только авторизованному
+  // лаунчеру через /api/launcher/key, лаунчер прокидывает его Java-агенту.
+  // Ротируй на каждую новую сборку (новый K → старые слитые ключи бесполезны).
+  KZC_CLASS_KEY: process.env.KZC_CLASS_KEY || '',
+  // Путь к kzc-agent.jar (выход build/libs/kzc-agent.jar). Раздаётся лаунчеру.
+  AGENT_SOURCE_PATH: process.env.AGENT_SOURCE_PATH || require('path').join(__dirname, 'files', 'kzc-agent.jar'),
+  // URL агента (GitHub Releases) — для Render. Если задан — приоритетнее PATH.
+  AGENT_SOURCE_URL: process.env.AGENT_SOURCE_URL || '',
 };

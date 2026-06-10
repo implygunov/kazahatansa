@@ -2,8 +2,9 @@ const { Router } = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { data, save, nextId } = require('../database');
-const { JWT_SECRET, authMiddleware } = require('../middleware');
+const { JWT_SECRET, authMiddleware, logAction } = require('../middleware');
 const { TURNSTILE_SECRET } = require('../config');
+const config = require('../config');
 
 const router = Router();
 
@@ -118,14 +119,35 @@ router.post('/launcher/login', (req, res) => {
     return res.json({ allowed: false, error: 'Subscription expired' });
   }
 
+  // JWT для защищённых лаунчер-роутов (/download/client, /launcher/key).
+  // Тот же формат, что у web-login, чтобы authMiddleware работал одинаково.
+  const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
+
   res.json({
     allowed: true,
+    token,
     username: user.username,
     role: user.role,
     ram: String(user.ram || 2048),
     subTime: user.subscription_until || '',
     uid: String(user.id),
   });
+});
+
+// ── Выдача ключа расшифровки классов (Pillar B) ──
+// Ключ K, которым при сборке зашифрованы .class секретных пакетов клиента.
+// Отдаётся ТОЛЬКО авторизованному лаунчеру (Bearer JWT). Лаунчер передаёт его
+// Java-агенту через переменную окружения KZC_K; без него классы = мусор.
+// Привязка к сессии (uid/hwid) + лог факта выдачи для аудита/детекта слива.
+router.get('/launcher/key', authMiddleware, (req, res) => {
+  const key = config.KZC_CLASS_KEY;
+  if (!key || !/^[0-9a-fA-F]{64}$/.test(key)) {
+    return res.status(500).json({ error: 'class_key_not_configured' });
+  }
+  const user = data.users.find(u => u.id === req.user.id);
+  if (!user || user.role === 'BANNED') return res.status(403).json({ error: 'forbidden' });
+  logAction('class_key_issue', `uid:${req.user.id}`, `hwid:${user.hwid || '-'}`, req.user);
+  res.json({ k: key });
 });
 
 module.exports = router;

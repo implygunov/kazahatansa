@@ -19,3 +19,8 @@ Thumbs.db
 .claude/
 
 *.bak
+
+# Большие jar'ы (защищённый клиент ~136МБ + агент) — НЕ в git.
+# На проде раздаются по URL (JAR_SOURCE_URL/AGENT_SOURCE_URL, GitHub Releases).
+backend/files/
+*.jar
